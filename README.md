@@ -25,26 +25,62 @@ trip squares, or write your own — one per line, exactly 24 lines (a free
 space fills the center automatically). Submitting gives you a code like
 `A1B2C3` and takes you straight to the board.
 
-## Deploying to Netlify
+## Local development
 
-This version **needs a build step** to install the `@netlify/blobs`
-dependency and bundle the function, so the drag-and-drop uploader
-(app.netlify.com/drop) won't work here — use one of these instead:
+The Netlify CLI runs the whole site locally — static pages, the function,
+and Blobs storage — using a sandboxed local store that's completely
+separate from production. Nothing you do locally touches the real,
+deployed board data.
+
+**One-time setup:**
+```bash
+cd amsterdam-bingo-shared
+npm install
+```
+This installs both the function's dependency (`@netlify/blobs`) and the
+Netlify CLI itself (`netlify-cli` is a devDependency, so you don't need it
+installed globally).
+
+**Run it:**
+```bash
+npm run dev
+```
+This starts a local server, normally at **http://localhost:8888**. Open
+that in your browser — creating and joining boards, toggling squares, and
+the live polling all work exactly like production, just talking to a local
+Blobs store on disk instead of Netlify's servers.
+
+Local blob data lives in a `.netlify/` folder that gets created
+automatically (already excluded via `.gitignore`) — delete that folder any
+time to wipe your local boards and start fresh.
+
+*Optional:* if you want local dev to mirror your real Netlify site even
+more closely (e.g. picking up the same environment variables), run
+`netlify link` once to connect this folder to your deployed site. It isn't
+required — `npm run dev` works fine unlinked.
+
+## Production deployment (Netlify)
+
+This site needs a build step to install `@netlify/blobs` and bundle the
+function, so the drag-and-drop uploader (app.netlify.com/drop) won't work
+here — use one of these instead:
 
 **Option A — connect a Git repo (recommended):**
 1. Push this folder to a new GitHub repo
 2. In Netlify: "Add new site" → "Import an existing project" → pick the repo
 3. Build command: `npm install` (already set in `netlify.toml`)
 4. Publish directory: `.`
-5. Deploy — Netlify Blobs works automatically, no setup needed
+5. Deploy — Netlify Blobs works automatically in production, no setup needed
 
 **Option B — Netlify CLI, no Git required:**
 ```bash
-npm install -g netlify-cli
-cd amsterdam-bingo-shared
 netlify deploy --build --prod
 ```
-This builds and deploys straight from your machine.
+Run from inside `amsterdam-bingo-shared/`. This builds and deploys straight
+from your machine to a live URL.
+
+Either way, production reads and writes to Netlify's real Blobs storage —
+separate from whatever you created while running `npm run dev` locally.
 
 ## Notes
 
