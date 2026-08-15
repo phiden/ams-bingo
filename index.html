@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Amsterdam Bingo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { paper: '#EFEAE0', paper2: '#E7E0D2', ink: '#26313F', orange: '#EA6A2E', teal: '#2E6B62', stamp: '#B8432E' },
+        fontFamily: {
+          display: ['Fraunces', 'serif'],
+          body: ['"Source Sans 3"', 'sans-serif'],
+          mono: ['"IBM Plex Mono"', 'monospace'],
+        }
+      }
+    }
+  }
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="min-h-screen font-body text-ink">
+
+  <div class="max-w-xl mx-auto px-4 py-10 sm:py-14">
+
+    <header class="mb-8">
+      <p class="font-mono text-xs tracking-[0.25em] uppercase text-teal mb-2">Reisdagboek &middot; Travel Log</p>
+      <h1 class="font-display text-4xl sm:text-5xl font-semibold leading-tight text-ink">Amsterdam Bingo</h1>
+      <p class="font-mono text-sm text-ink/60 mt-2">Start a board, or join one someone shared with you.</p>
+    </header>
+
+    <!-- Join a board -->
+    <section class="postcard-card rounded-sm p-5 sm:p-6 mb-6">
+      <h2 class="font-display text-xl font-semibold mb-1">Join a board</h2>
+      <p class="font-mono text-xs text-ink/60 mb-4">Got a 6-character code from someone in the group?</p>
+      <form id="join-form" class="flex gap-2">
+        <input id="join-code" type="text" maxlength="6" placeholder="A1B2C3"
+          class="field-input rounded-sm px-3 py-2 font-mono uppercase tracking-widest w-full" />
+        <button type="submit" class="bg-orange text-paper font-mono text-sm px-4 py-2 rounded-sm shrink-0 hover:opacity-90 transition-opacity">Join</button>
+      </form>
+      <p id="join-error" class="hidden font-mono text-xs text-stamp mt-2"></p>
+    </section>
+
+    <!-- Create a board -->
+    <section class="postcard-card rounded-sm p-5 sm:p-6">
+      <h2 class="font-display text-xl font-semibold mb-1">Start a new board</h2>
+      <p class="font-mono text-xs text-ink/60 mb-4">Everyone with the code plays the same board together.</p>
+
+      <form id="create-form">
+        <label class="block font-mono text-xs text-ink/60 mb-1">Board title</label>
+        <input id="board-title" type="text" value="Amsterdam Bingo"
+          class="field-input rounded-sm px-3 py-2 w-full mb-3" />
+
+        <label class="block font-mono text-xs text-ink/60 mb-1">Subtitle (dates, group name, etc.)</label>
+        <input id="board-subtitle" type="text" value="17–23 August 2026"
+          class="field-input rounded-sm px-3 py-2 w-full mb-3" />
+
+        <div class="flex items-center justify-between mb-1">
+          <label class="block font-mono text-xs text-ink/60">24 squares, one per line (a free space is added automatically)</label>
+          <button type="button" id="use-preset" class="font-mono text-xs text-teal underline decoration-dotted underline-offset-4 hover:text-orange transition-colors">use Amsterdam preset</button>
+        </div>
+        <textarea id="board-items" rows="10"
+          class="field-input rounded-sm px-3 py-2 w-full font-mono text-sm mb-1"
+          placeholder="One square per line..."></textarea>
+        <p id="line-count" class="font-mono text-[11px] text-ink/40 mb-4">0 / 24 lines</p>
+
+        <button type="submit" id="create-btn"
+          class="bg-teal text-paper font-mono text-sm px-4 py-2 rounded-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+          Create board
+        </button>
+        <p id="create-error" class="hidden font-mono text-xs text-stamp mt-2"></p>
+      </form>
+    </section>
+
+    <footer class="text-center font-mono text-[11px] text-ink/40 leading-relaxed mt-8">
+      <p>Everyone who has the code or link sees the same live board.</p>
+    </footer>
+
+  </div>
+
+  <script src="landing-app.js"></script>
+</body>
+</html>
