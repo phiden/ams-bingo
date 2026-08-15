@@ -36,10 +36,22 @@ deployed board data.
 ```bash
 cd amsterdam-bingo-shared
 npm install
+netlify login
+netlify init
 ```
-This installs both the function's dependency (`@netlify/blobs`) and the
-Netlify CLI itself (`netlify-cli` is a devDependency, so you don't need it
-installed globally).
+`npm install` installs both the function's dependency (`@netlify/blobs`)
+and the Netlify CLI itself (`netlify-cli` is a devDependency, so you don't
+need it installed globally).
+
+`netlify init` links this folder to an actual Netlify site (creating one
+if you don't have it yet) and writes a small `.netlify/state.json` file
+recording the site ID. **This step is required**, not optional — Netlify
+Blobs needs a linked site ID to set up its local storage context, even
+though the data itself stays local. Skipping it produces:
+`MissingBlobsEnvironmentError: The environment has not been configured to
+use Netlify Blobs`. If `netlify init` asks about connecting a Git repo,
+you can choose to deploy manually instead — you can always connect Git
+later for production.
 
 **Run it:**
 ```bash
@@ -52,12 +64,8 @@ Blobs store on disk instead of Netlify's servers.
 
 Local blob data lives in a `.netlify/` folder that gets created
 automatically (already excluded via `.gitignore`) — delete that folder any
-time to wipe your local boards and start fresh.
-
-*Optional:* if you want local dev to mirror your real Netlify site even
-more closely (e.g. picking up the same environment variables), run
-`netlify link` once to connect this folder to your deployed site. It isn't
-required — `npm run dev` works fine unlinked.
+time to wipe your local boards and start fresh. (Deleting it also removes
+the site link, so you'd need to run `netlify init` again.)
 
 ## Production deployment (Netlify)
 
@@ -82,7 +90,24 @@ from your machine to a live URL.
 Either way, production reads and writes to Netlify's real Blobs storage —
 separate from whatever you created while running `npm run dev` locally.
 
-## Notes
+## Troubleshooting
+
+**`MissingBlobsEnvironmentError` even though `netlify link`/`netlify init`
+succeeded and `netlify status` shows the site correctly:** this usually
+means `@netlify/blobs` in this project's own `package.json` is on a
+different major version than the copy bundled inside `netlify-cli`. The
+CLI's local dev server sets up the local Blobs context using its own
+version; if your function imports an older major version of the same
+package, it can't read that context and throws this error even though
+everything is linked correctly. Fix: check what version is bundled with
+your installed CLI —
+```bash
+npm ls netlify-cli @netlify/blobs
+```
+— and set the top-level `@netlify/blobs` dependency in `package.json` to
+match that same major version, then `npm install` again.
+
+
 
 - Boards don't expire automatically — feel free to reuse the same one for
   the whole trip.
