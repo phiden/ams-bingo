@@ -16,6 +16,18 @@ let pendingIds = new Set(); // items with an optimistic update in flight
 let optimistic = {}; // itemId -> checked value we're showing ahead of the server confirming it
 let pollTimer = null;
 
+// Requests can resolve out of order (a poll started before a click can
+// finish after that click's own response). Tagging each request with a
+// sequence number at send-time — and only ever applying the highest one
+// seen — stops a stale response from overwriting a fresher one.
+let seqCounter = 0;
+let latestAppliedSeq = 0;
+function shouldApply(seq) {
+  if (seq <= latestAppliedSeq) return false;
+  latestAppliedSeq = seq;
+  return true;
+}
+
 function isFreeSpace(item) {
   return item.text.trim().toUpperCase() === 'FREE SPACE';
 }
@@ -109,6 +121,7 @@ function checkForBingo() {
 
 async function fetchBoard({ silent } = {}) {
   if (silent && pendingIds.size > 0) return; // don't let a background poll race an in-flight toggle
+  const seq = ++seqCounter;
   try {
     const res = await fetch(`/.netlify/functions/board?id=${encodeURIComponent(boardId)}`);
     if (!res.ok) {
@@ -116,6 +129,7 @@ async function fetchBoard({ silent } = {}) {
       throw new Error(err.error || 'Board not found.');
     }
     const data = await res.json();
+    if (!shouldApply(seq)) return; // a newer request already updated the view
     record = data;
     hideError();
     render();
@@ -135,6 +149,7 @@ async function toggleItem(itemId) {
   pendingIds.add(itemId);
   render();
 
+  const seq = ++seqCounter;
   try {
     const res = await fetch(`/.netlify/functions/board?action=toggle&id=${encodeURIComponent(boardId)}`, {
       method: 'POST',
@@ -145,7 +160,8 @@ async function toggleItem(itemId) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Could not save that.');
     }
-    record = await res.json();
+    const data = await res.json();
+    if (shouldApply(seq)) record = data;
   } catch (err) {
     showError(err.message);
   } finally {
@@ -157,6 +173,7 @@ async function toggleItem(itemId) {
 
 async function resetBoard() {
   if (!confirm('Reset this board for everyone playing?')) return;
+  const seq = ++seqCounter;
   try {
     const res = await fetch(`/.netlify/functions/board?action=reset&id=${encodeURIComponent(boardId)}`, {
       method: 'POST',
@@ -165,8 +182,11 @@ async function resetBoard() {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Could not reset the board.');
     }
-    record = await res.json();
-    render();
+    const data = await res.json();
+    if (shouldApply(seq)) {
+      record = data;
+      render();
+    }
   } catch (err) {
     showError(err.message);
   }
