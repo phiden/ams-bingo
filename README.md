@@ -9,7 +9,7 @@ real time.
 
 - **`index.html`** — landing page: create a board or join one by code
 - **`board.html`** — the live board itself (reads `?id=XXXXXX` from the URL)
-- **`netlify/functions/board.js`** — a serverless function that stores each
+- **`netlify/functions/board.mjs`** — a serverless function that stores each
   board and its checked squares using **Netlify Blobs** (Netlify's built-in
   storage — no extra account or service to sign up for)
 - The board page polls the server every 4 seconds, so a square someone else
@@ -17,6 +17,15 @@ real time.
 
 There's no login — a board's 6-character code *is* the access key. Anyone
 with the code or link can view and check squares on that board.
+
+The function is written in Netlify's **modern function format**
+(`export default async (req) => {...}`, built on the standard
+`Request`/`Response` objects). This matters for Blobs specifically: it's
+the format Netlify auto-injects storage credentials into, both locally and
+in production, with no extra configuration. The older "Lambda
+compatibility" format (`exports.handler = async (event) => {...}`) does
+*not* get that automatic injection — if you ever add another function to
+this project, write it in the same modern style to avoid storage errors.
 
 ## Creating a board
 
@@ -27,31 +36,23 @@ space fills the center automatically). Submitting gives you a code like
 
 ## Local development
 
-The Netlify CLI runs the whole site locally — static pages, the function,
-and Blobs storage — using a sandboxed local store that's completely
-separate from production. Nothing you do locally touches the real,
-deployed board data.
-
 **One-time setup:**
 ```bash
 cd amsterdam-bingo-shared
 npm install
-netlify login
-netlify init
+npx netlify login
+npx netlify init
 ```
 `npm install` installs both the function's dependency (`@netlify/blobs`)
 and the Netlify CLI itself (`netlify-cli` is a devDependency, so you don't
-need it installed globally).
+need it installed globally — that's also why CLI commands need the `npx`
+prefix rather than running as a bare `netlify ...`).
 
-`netlify init` links this folder to an actual Netlify site (creating one
-if you don't have it yet) and writes a small `.netlify/state.json` file
-recording the site ID. **This step is required**, not optional — Netlify
-Blobs needs a linked site ID to set up its local storage context, even
-though the data itself stays local. Skipping it produces:
-`MissingBlobsEnvironmentError: The environment has not been configured to
-use Netlify Blobs`. If `netlify init` asks about connecting a Git repo,
-you can choose to deploy manually instead — you can always connect Git
-later for production.
+`npx netlify init` links this folder to an actual Netlify site (creating
+one if you don't have it yet) and writes a small `.netlify/state.json`
+file recording the site ID. If it asks about connecting a Git repo, you
+can choose to deploy manually instead — you can always connect Git later
+for production.
 
 **Run it:**
 ```bash
@@ -65,7 +66,7 @@ Blobs store on disk instead of Netlify's servers.
 Local blob data lives in a `.netlify/` folder that gets created
 automatically (already excluded via `.gitignore`) — delete that folder any
 time to wipe your local boards and start fresh. (Deleting it also removes
-the site link, so you'd need to run `netlify init` again.)
+the site link, so you'd need to run `npx netlify init` again.)
 
 ## Production deployment (Netlify)
 
@@ -82,7 +83,7 @@ here — use one of these instead:
 
 **Option B — Netlify CLI, no Git required:**
 ```bash
-netlify deploy --build --prod
+npx netlify deploy --build --prod
 ```
 Run from inside `amsterdam-bingo-shared/`. This builds and deploys straight
 from your machine to a live URL.
@@ -92,22 +93,20 @@ separate from whatever you created while running `npm run dev` locally.
 
 ## Troubleshooting
 
-**`MissingBlobsEnvironmentError` even though `netlify link`/`netlify init`
-succeeded and `netlify status` shows the site correctly:** this usually
-means `@netlify/blobs` in this project's own `package.json` is on a
-different major version than the copy bundled inside `netlify-cli`. The
-CLI's local dev server sets up the local Blobs context using its own
-version; if your function imports an older major version of the same
-package, it can't read that context and throws this error even though
-everything is linked correctly. Fix: check what version is bundled with
-your installed CLI —
-```bash
-npm ls netlify-cli @netlify/blobs
-```
-— and set the top-level `@netlify/blobs` dependency in `package.json` to
-match that same major version, then `npm install` again.
+**"command not found: netlify":** the CLI is installed locally in this
+project, not globally — run it via `npx netlify <command>` (e.g.
+`npx netlify status`) rather than a bare `netlify`. `npm run dev` works
+without `npx` because npm scripts automatically use the local install.
 
+**`MissingBlobsEnvironmentError`:** make sure `npx netlify init` has been
+run and `npx netlify status` shows a linked site, then fully restart
+`npm run dev` (environment setup is only read at startup). If it still
+happens, check that any function you've added uses the modern
+`export default async (req) => {...}` format described above, not the
+older `exports.handler` style — that's the one case Netlify doesn't
+auto-configure Blobs for.
 
+## Notes
 
 - Boards don't expire automatically — feel free to reuse the same one for
   the whole trip.
