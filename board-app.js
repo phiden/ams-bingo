@@ -119,11 +119,23 @@ function checkForBingo() {
   winBanner.classList.toggle('hidden', !hasLine);
 }
 
-async function fetchBoard({ silent } = {}) {
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchBoard({ silent, retriesLeft = 0 } = {}) {
   if (silent && pendingIds.size > 0) return; // don't let a background poll race an in-flight toggle
   const seq = ++seqCounter;
   try {
     const res = await fetch(`/.netlify/functions/board?id=${encodeURIComponent(boardId)}`);
+
+    // A board that was just created can take a moment to become readable.
+    // Retry quietly rather than flashing "not found" while it catches up.
+    if (res.status === 404 && retriesLeft > 0) {
+      await delay(800);
+      return fetchBoard({ silent, retriesLeft: retriesLeft - 1 });
+    }
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Board not found.');
@@ -220,5 +232,7 @@ copyLinkBtn.addEventListener('click', copyLink);
 if (!boardId || boardId.length !== 6) {
   showError('No board code in the link. Go back and create or join a board.');
 } else {
-  fetchBoard().then(startPolling);
+  // Up to 6 retries, 800ms apart (~5s) covers a freshly created board
+  // still propagating through storage.
+  fetchBoard({ retriesLeft: 6 }).then(startPolling);
 }
