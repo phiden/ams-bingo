@@ -123,17 +123,23 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchBoard({ silent, retriesLeft = 0 } = {}) {
+const pageLoadedAt = Date.now();
+const NOT_FOUND_GRACE_MS = 15000; // give a freshly created board up to 15s to become readable
+const RETRY_DELAY_MS = 1000;
+
+async function fetchBoard({ silent } = {}) {
   if (silent && pendingIds.size > 0) return; // don't let a background poll race an in-flight toggle
   const seq = ++seqCounter;
   try {
     const res = await fetch(`/.netlify/functions/board?id=${encodeURIComponent(boardId)}`);
 
     // A board that was just created can take a moment to become readable.
-    // Retry quietly rather than flashing "not found" while it catches up.
-    if (res.status === 404 && retriesLeft > 0) {
-      await delay(800);
-      return fetchBoard({ silent, retriesLeft: retriesLeft - 1 });
+    // Retry quietly, for as long as we're still within the grace period and
+    // haven't successfully loaded a board yet — rather than flashing "not
+    // found" while it catches up.
+    if (res.status === 404 && !record && Date.now() - pageLoadedAt < NOT_FOUND_GRACE_MS) {
+      await delay(RETRY_DELAY_MS);
+      return fetchBoard({ silent });
     }
 
     if (!res.ok) {
@@ -232,7 +238,5 @@ copyLinkBtn.addEventListener('click', copyLink);
 if (!boardId || boardId.length !== 6) {
   showError('No board code in the link. Go back and create or join a board.');
 } else {
-  // Up to 6 retries, 800ms apart (~5s) covers a freshly created board
-  // still propagating through storage.
-  fetchBoard({ retriesLeft: 6 }).then(startPolling);
+  fetchBoard().then(startPolling);
 }
