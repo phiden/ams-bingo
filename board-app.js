@@ -13,10 +13,17 @@ const boardCodeEl = document.getElementById('board-code');
 
 let record = null; // { id, title, subtitle, items, checked }
 let pendingIds = new Set(); // items with an optimistic update in flight
+let optimistic = {}; // itemId -> checked value we're showing ahead of the server confirming it
 let pollTimer = null;
 
 function isFreeSpace(item) {
   return item.text.trim().toUpperCase() === 'FREE SPACE';
+}
+
+function isEffectivelyChecked(item) {
+  if (isFreeSpace(item)) return true;
+  if (pendingIds.has(item.id)) return optimistic[item.id];
+  return !!record.checked[item.id];
 }
 
 function showError(message) {
@@ -38,7 +45,7 @@ function render() {
   gridEl.innerHTML = '';
   record.items.forEach((item) => {
     const free = isFreeSpace(item);
-    const checked = free ? true : !!record.checked[item.id];
+    const checked = isEffectivelyChecked(item);
 
     const cell = document.createElement('button');
     cell.type = 'button';
@@ -69,7 +76,7 @@ function render() {
 
 function updateProgress() {
   const total = record.items.length;
-  const checkedCount = record.items.filter((item) => isFreeSpace(item) || record.checked[item.id]).length;
+  const checkedCount = record.items.filter((item) => isEffectivelyChecked(item)).length;
   progressEl.textContent = `${checkedCount} / ${total} stamped`;
 }
 
@@ -79,7 +86,7 @@ function getCheckedGrid() {
     const row = [];
     for (let c = 0; c < 5; c++) {
       const item = record.items[r * 5 + c];
-      row.push(isFreeSpace(item) || !!record.checked[item.id]);
+      row.push(isEffectivelyChecked(item));
     }
     matrix.push(row);
   }
@@ -101,6 +108,7 @@ function checkForBingo() {
 }
 
 async function fetchBoard({ silent } = {}) {
+  if (silent && pendingIds.size > 0) return; // don't let a background poll race an in-flight toggle
   try {
     const res = await fetch(`/.netlify/functions/board?id=${encodeURIComponent(boardId)}`);
     if (!res.ok) {
@@ -118,6 +126,12 @@ async function fetchBoard({ silent } = {}) {
 }
 
 async function toggleItem(itemId) {
+  if (pendingIds.has(itemId)) return; // already mid-toggle, ignore extra taps
+
+  const item = record.items.find((i) => i.id === itemId);
+  const current = isEffectivelyChecked(item);
+
+  optimistic[itemId] = !current;
   pendingIds.add(itemId);
   render();
 
@@ -136,6 +150,7 @@ async function toggleItem(itemId) {
     showError(err.message);
   } finally {
     pendingIds.delete(itemId);
+    delete optimistic[itemId];
     render();
   }
 }
